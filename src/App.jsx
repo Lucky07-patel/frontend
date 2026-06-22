@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 
 function App() {
-  const [page, setPage] = useState("form");
-
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -13,32 +12,6 @@ function App() {
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState("");
 
-  const [leads, setLeads] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  const fetchLeads = async () => {
-    try {
-      setLoading(true);
-
-      const response = await fetch("http://localhost:5000/leads");
-      const result = await response.json();
-
-      if (result.success) {
-        setLeads(result.data);
-      }
-    } catch (error) {
-      console.log(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (page === "admin") {
-      fetchLeads();
-    }
-  }, [page]);
-
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -48,7 +21,10 @@ function App() {
     setErrors({
       ...errors,
       [e.target.name]: "",
+      api: "",
     });
+
+    setSuccess("");
   };
 
   const validateForm = () => {
@@ -73,17 +49,17 @@ function App() {
     }
 
     setErrors(newErrors);
-
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSuccess("");
 
     if (!validateForm()) return;
 
     try {
-      const response = await fetch("http://localhost:5000/leads", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/leads`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -95,7 +71,7 @@ function App() {
 
       if (!response.ok) {
         setErrors({
-          api: result.message,
+          api: result.message || "Something went wrong",
         });
         return;
       }
@@ -115,108 +91,23 @@ function App() {
     }
   };
 
-  const getScoreColor = (score) => {
-    switch (score) {
-      case "Hot":
-        return "bg-red-100 text-red-600";
-
-      case "Warm":
-        return "bg-yellow-100 text-yellow-700";
-
-      case "Cold":
-        return "bg-blue-100 text-blue-700";
-
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
-  };
-
-  if (page === "admin") {
-    return (
-      <div className="min-h-screen bg-gray-100 p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">
-            Lead Management Dashboard
-          </h1>
-
-          <button
-            onClick={() => setPage("form")}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
-          >
-            Back To Form
-          </button>
-        </div>
-
-        {loading ? (
-          <h2>Loading...</h2>
-        ) : (
-          <div className="overflow-x-auto bg-white shadow rounded-lg">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-gray-900 text-white">
-                  <th className="p-4 text-left">Name</th>
-                  <th className="p-4 text-left">Email</th>
-                  <th className="p-4 text-left">Business</th>
-                  <th className="p-4 text-left">AI Score</th>
-                  <th className="p-4 text-left">
-                    Generated Email Draft
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {leads.map((lead) => (
-                  <tr
-                    key={lead.id}
-                    className="border-b hover:bg-gray-50"
-                  >
-                    <td className="p-4">
-                      {lead.full_name}
-                    </td>
-
-                    <td className="p-4">
-                      {lead.email}
-                    </td>
-
-                    <td className="p-4">
-                      {lead.business_name}
-                    </td>
-
-                    <td className="p-4">
-                      <span
-                        className={`px-3 py-1 rounded-full font-semibold ${getScoreColor(
-                          lead.ai_score
-                        )}`}
-                      >
-                        {lead.ai_score || "Pending"}
-                      </span>
-                    </td>
-
-                    <td className="p-4 max-w-md whitespace-pre-wrap">
-                      {lead.ai_email_draft ||
-                        "Email not generated"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center items-center px-4">
-      <div className="absolute top-5 right-5">
-        <button
-          onClick={() => setPage("admin")}
-          className="bg-gray-900 text-white px-4 py-2 rounded"
+      <div className="absolute top-5 right-5 flex gap-3">
+        <Link
+          to="/admin"
+          className="bg-gray-900 text-white px-4 py-2 rounded hover:bg-gray-700"
         >
           View Leads
-        </button>
-      </div>
+        </Link>
 
+        <Link
+          to="/dashboard"
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+        >
+          Dashboard
+        </Link>
+      </div>
       <form
         onSubmit={handleSubmit}
         className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md"
@@ -245,9 +136,7 @@ function App() {
           onChange={handleChange}
           className="w-full border p-3 rounded mb-2"
         />
-        <p className="text-red-500 text-sm mb-2">
-          {errors.fullName}
-        </p>
+        <p className="text-red-500 text-sm mb-2">{errors.fullName}</p>
 
         <input
           type="email"
@@ -257,9 +146,7 @@ function App() {
           onChange={handleChange}
           className="w-full border p-3 rounded mb-2"
         />
-        <p className="text-red-500 text-sm mb-2">
-          {errors.email}
-        </p>
+        <p className="text-red-500 text-sm mb-2">{errors.email}</p>
 
         <input
           type="text"
@@ -269,9 +156,7 @@ function App() {
           onChange={handleChange}
           className="w-full border p-3 rounded mb-2"
         />
-        <p className="text-red-500 text-sm mb-2">
-          {errors.businessName}
-        </p>
+        <p className="text-red-500 text-sm mb-2">{errors.businessName}</p>
 
         <textarea
           rows="4"
@@ -282,9 +167,7 @@ function App() {
           className="w-full border p-3 rounded mb-2"
         />
 
-        <p className="text-red-500 text-sm mb-2">
-          {errors.message}
-        </p>
+        <p className="text-red-500 text-sm mb-2">{errors.message}</p>
 
         <button className="w-full bg-blue-600 text-white py-3 rounded hover:bg-blue-700">
           Submit
